@@ -7,7 +7,7 @@ import {
   englishDataset,
   englishRecommendedTransformers,
 } from "obscenity";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 interface FilterResult {
   original: string;
@@ -16,8 +16,80 @@ interface FilterResult {
   isClean: boolean;
 }
 
+// Memoized variation cache to avoid regenerating the same variations
+const variationCache = new Map<string, string[]>();
+
+// Optimized function to generate essential word variations
+const generateWordVariations = (word: string): string[] => {
+  if (!word || word.length === 0) return [];
+  
+  // Check cache first
+  if (variationCache.has(word)) {
+    return variationCache.get(word)!;
+  }
+  
+  const variations: Set<string> = new Set();
+  const maxVariations = 200; // Reduced from 1000 to 200 for better performance
+  
+  // Add original word
+  variations.add(word);
+  
+  // Common separators (reduced set)
+  const separators = ['-', ' ', '.'];
+  
+  // Basic leetspeak substitutions (most common only)
+  const leetMap: { [key: string]: string[] } = {
+    'a': ['4'],
+    'e': ['3'],
+    'i': ['1'],
+    'o': ['0'],
+    's': ['5'],
+    't': ['7']
+  };
+  
+  // Generate basic variations with separators
+  separators.forEach(sep => {
+    const separated = word.split('').join(sep);
+    variations.add(separated);
+    
+    // Add leetspeak version of separated word
+    let leetSeparated = separated;
+    Object.entries(leetMap).forEach(([letter, substitutes]) => {
+      if (leetSeparated.includes(letter) && variations.size < maxVariations) {
+        leetSeparated = leetSeparated.replace(new RegExp(letter, 'g'), substitutes[0]);
+      }
+    });
+    variations.add(leetSeparated);
+  });
+  
+  // Generate basic leetspeak variations
+  let leetWord = word;
+  Object.entries(leetMap).forEach(([letter, substitutes]) => {
+    if (leetWord.includes(letter) && variations.size < maxVariations) {
+      leetWord = leetWord.replace(new RegExp(letter, 'g'), substitutes[0]);
+    }
+  });
+  variations.add(leetWord);
+  
+  // Add separated version of leetspeak
+  separators.forEach(sep => {
+    if (variations.size < maxVariations) {
+      variations.add(leetWord.split('').join(sep));
+    }
+  });
+  
+  const result = Array.from(variations);
+  
+  // Cache the result
+  variationCache.set(word, result);
+  
+  return result;
+};
+
 // Custom function to detect variations of bad words with word boundary checking
 const detectBadWordVariations = (text: string, badWordsList: string[]): string[] => {
+  if (!text || !badWordsList || badWordsList.length === 0) return [];
+  
   const detectedWords: string[] = [];
   const lowerText = text.toLowerCase();
   
@@ -49,233 +121,48 @@ const detectBadWordVariations = (text: string, badWordsList: string[]): string[]
     }
   };
   
-  // Debug: Check if fuck is in the bad words list
-  console.log('=== DEBUG: Bad words list analysis ===');
-  console.log('Total bad words:', badWordsList.length);
-  console.log('Contains "fuck":', badWordsList.some(word => word.toLowerCase() === 'fuck'));
-  console.log('Contains "f*ck":', badWordsList.some(word => word.toLowerCase().includes('fuck')));
-  console.log('Sample bad words:', badWordsList.slice(0, 20));
-  
-  badWordsList.forEach(badWord => {
+  // Process bad words with early termination
+  for (const badWord of badWordsList) {
     const lowerBadWord = badWord.toLowerCase();
     
     // Skip very short words that are likely false positives
-    if (lowerBadWord.length < 3) return;
+    if (lowerBadWord.length < 3) continue;
     
     // Skip common false positive words
-    if (falsePositives.has(lowerBadWord)) return;
+    if (falsePositives.has(lowerBadWord)) continue;
     
-    // Check for exact word boundary match first
+    // Check for exact word boundary match first (fastest check)
     if (checkWordExists(lowerBadWord, lowerText)) {
       detectedWords.push(badWord);
-      return;
+      continue;
     }
     
-    // Generate all possible variations
+    // Generate variations only if needed
     const variations = generateWordVariations(lowerBadWord);
     
-    // Debug logging for testing
-    if (lowerBadWord === 'fuck') {
-      console.log('=== DEBUG: Checking fuck variations ===');
-      console.log('Original bad word:', badWord);
-      console.log('Lower bad word:', lowerBadWord);
-      console.log('Generated variations:', variations);
-      console.log('Text to check:', lowerText);
-      console.log('Bad words list length:', badWordsList.length);
-      console.log('First 10 bad words:', badWordsList.slice(0, 10));
+    // Check variations with early termination
+    for (const variation of variations) {
+      if (variation.length < 2) continue;
       
-      // Test specific variations
-      const testVariations = ['f-4-c-k', 'f u c k', 'f.u.c.k', 'fuck'];
-      testVariations.forEach(variation => {
-        const exists = checkWordExists(variation, lowerText);
-        const directMatch = lowerText.includes(variation.toLowerCase());
-        console.log(`Variation "${variation}": boundary=${exists}, direct=${directMatch}`);
-      });
-    }
-    
-          // Check if any variation exists in the text with word boundaries
-      for (const variation of variations) {
-        if (variation.length < 2) continue; // Skip very short variations
-        
-        // Debug: Log each variation check
-        if (lowerBadWord === 'fuck') {
-          console.log(`Checking variation: "${variation}"`);
-        }
-        
-        if (checkWordExists(variation, lowerText)) {
-          if (lowerBadWord === 'fuck') {
-            console.log(`✓ Found match for variation: "${variation}"`);
-          }
+      if (checkWordExists(variation, lowerText)) {
+        detectedWords.push(badWord);
+        break; // Found a match, no need to check more variations
+      }
+      
+      // Fallback: for hyphenated patterns, also check without word boundaries
+      if (variation.includes('-') || variation.includes(' ') || variation.includes('.')) {
+        if (lowerText.includes(variation.toLowerCase())) {
           detectedWords.push(badWord);
           break;
         }
-        
-        // Fallback: for hyphenated patterns, also check without word boundaries
-        if (variation.includes('-') || variation.includes(' ') || variation.includes('.')) {
-          if (lowerText.includes(variation.toLowerCase())) {
-            if (lowerBadWord === 'fuck') {
-              console.log(`✓ Found fallback match for variation: "${variation}"`);
-            }
-            detectedWords.push(badWord);
-            break;
-          }
-        }
       }
-  });
+    }
+  }
   
-  const finalResult = [...new Set(detectedWords)];
-  
-  // Debug: Log final result
-  console.log('=== DEBUG: Final detection result ===');
-  console.log('Detected words array:', detectedWords);
-  console.log('Final result (deduplicated):', finalResult);
-  
-  return finalResult;
+  return [...new Set(detectedWords)];
 };
 
-// Optimized function to generate essential word variations
-const generateWordVariations = (word: string): string[] => {
-  if (!word || word.length === 0) return [];
-  
-  const variations: Set<string> = new Set();
-  const maxVariations = 1000; // Limit to prevent freezing
-  
-  // Add original word
-  variations.add(word);
-  
-  // Common separators
-  const separators = ['-', ' ', '.', '_', '|', '/', '*', '+', '='];
-  
-  // Basic leetspeak substitutions (most common)
-  const leetMap: { [key: string]: string[] } = {
-    'a': ['4', '@'],
-    'e': ['3'],
-    'i': ['1', '!'],
-    'o': ['0'],
-    's': ['5', '$'],
-    't': ['7']
-  };
-  
-  // Generate basic variations with separators
-  separators.forEach(sep => {
-    const separated = word.split('').join(sep);
-    variations.add(separated);
-    
-    // Mixed case with separators
-    const mixedCase = word.split('').map((char, index) => 
-      index % 2 === 0 ? char.toUpperCase() : char
-    ).join(sep);
-    variations.add(mixedCase);
-  });
-  
-  // Generate leetspeak variations (limited)
-  Object.entries(leetMap).forEach(([letter, substitutes]) => {
-    if (word.includes(letter) && variations.size < maxVariations) {
-      substitutes.forEach(sub => {
-        const leetWord = word.replace(new RegExp(letter, 'g'), sub);
-        variations.add(leetWord);
-        
-        // Add separated versions of leetspeak
-        separators.slice(0, 3).forEach(sep => {
-          if (variations.size < maxVariations) {
-            variations.add(leetWord.split('').join(sep));
-          }
-        });
-      });
-    }
-  });
-  
-  // Generate leetspeak variations with separators applied first
-  // This creates variations like f-4-c-k from f-u-c-k
-  const separatedVariations = Array.from(variations).filter(v => v.includes('-') || v.includes(' ') || v.includes('.'));
-  
-  separatedVariations.forEach(separatedWord => {
-    Object.entries(leetMap).forEach(([letter, substitutes]) => {
-      if (separatedWord.includes(letter) && variations.size < maxVariations) {
-        substitutes.forEach(sub => {
-          const leetSeparated = separatedWord.replace(new RegExp(letter, 'g'), sub);
-          variations.add(leetSeparated);
-        });
-      }
-    });
-  });
-  
-  // Generate common unicode lookalikes
-  const unicodeMap: { [key: string]: string[] } = {
-    'a': ['а', 'α'],
-    'e': ['е'],
-    'i': ['і', 'ι'],
-    'o': ['о', 'ο'],
-    's': ['ѕ'],
-    't': ['т', 'τ']
-  };
-  
-  Object.entries(unicodeMap).forEach(([letter, substitutes]) => {
-    if (word.includes(letter) && variations.size < maxVariations) {
-      substitutes.forEach(sub => {
-        const unicodeWord = word.replace(new RegExp(letter, 'g'), sub);
-        variations.add(unicodeWord);
-        
-        // Add separated versions
-        separators.slice(0, 2).forEach(sep => {
-          if (variations.size < maxVariations) {
-            variations.add(unicodeWord.split('').join(sep));
-          }
-        });
-      });
-    }
-  });
-  
-  // Generate common character manipulations (limited)
-  if (variations.size < maxVariations) {
-    // Character repetition (most common)
-    for (let i = 0; i < word.length && variations.size < maxVariations; i++) {
-      const repeated = word.slice(0, i) + word[i].repeat(2) + word.slice(i + 1);
-      variations.add(repeated);
-    }
-  }
-  
-  if (variations.size < maxVariations) {
-    // Character omission (most common)
-    for (let i = 0; i < word.length && variations.size < maxVariations; i++) {
-      const omitted = word.slice(0, i) + word.slice(i + 1);
-      if (omitted.length >= 2) {
-        variations.add(omitted);
-      }
-    }
-  }
-  
-  // Add common prefixes/suffixes (limited set)
-  const commonPrefixes = ['the', 'a'];
-  const commonSuffixes = ['ing', 'ed', 's'];
-  
-  commonPrefixes.forEach(prefix => {
-    if (variations.size < maxVariations) {
-      variations.add(prefix + word);
-    }
-  });
-  
-  commonSuffixes.forEach(suffix => {
-    if (variations.size < maxVariations) {
-      variations.add(word + suffix);
-    }
-  });
-  
-  const result = Array.from(variations);
-  
-  // Debug: Test leetspeak generation for "fuck"
-  if (word === 'fuck') {
-    console.log('=== DEBUG: Leetspeak generation for fuck ===');
-    console.log('All variations:', result);
-    console.log('Contains f-4-c-k:', result.includes('f-4-c-k'));
-    console.log('Contains f-u-c-k:', result.includes('f-u-c-k'));
-    console.log('Contains f4ck:', result.includes('f4ck'));
-  }
-  
-  return result;
-};
-
-// Enhanced function to filter text with all variations using word boundaries
+// Optimized filtering function
 const filterTextWithVariations = (text: string, badWordsList: string[]): string => {
   if (!text || !badWordsList || badWordsList.length === 0) {
     return text;
@@ -285,52 +172,45 @@ const filterTextWithVariations = (text: string, badWordsList: string[]): string 
   
   // Helper function to check if a word exists in text with proper boundaries
   const checkWordExists = (word: string, text: string): boolean => {
-    // For words with separators (like f-4-c-k), check the exact pattern
     if (word.includes('-') || word.includes(' ') || word.includes('.')) {
-      // Escape special regex characters
       const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Match the pattern with word boundaries
       const pattern = new RegExp(`(^|[\\s\\W])${escapedWord}([\\s\\W]|$)`, 'gi');
       return pattern.test(text);
     } else {
-      // For regular words, use word boundary checking
       const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const pattern = new RegExp(`(^|[\\s\\W])${escapedWord}([\\s\\W]|$)`, 'gi');
       return pattern.test(text);
     }
   };
   
-  badWordsList.forEach(badWord => {
-    if (!badWord || typeof badWord !== 'string') return;
+  // Process each bad word
+  for (const badWord of badWordsList) {
+    if (!badWord || typeof badWord !== 'string') continue;
     
     const lowerBadWord = badWord.toLowerCase();
     const replacement = '*'.repeat(badWord.length);
     
-    // Generate all variations for this word
+    // Generate variations for this word
     const variations = generateWordVariations(lowerBadWord);
     
     // Replace each variation with word boundaries
-    variations.forEach(variation => {
-      if (!variation || variation.length < 2) return;
+    for (const variation of variations) {
+      if (!variation || variation.length < 2) continue;
       
       try {
-        // Create word boundary pattern for the variation
         const escapedVariation = variation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const boundaryPattern = new RegExp(`(^|[\\s\\W])${escapedVariation}([\\s\\W]|$)`, 'gi');
         
-        // Replace with word boundaries preserved
         filteredText = filteredText.replace(boundaryPattern, (match, before, after) => {
           return before + replacement + after;
         });
       } catch (regexError) {
-        console.warn(`Failed to create regex for variation: ${variation}`, regexError);
         // Fallback to simple string replacement with word boundaries
         const lowerText = filteredText.toLowerCase();
         const lowerVariation = variation.toLowerCase();
         const index = lowerText.indexOf(lowerVariation);
         
         if (index !== -1) {
-          // Check if it's a word boundary
           const beforeChar = index > 0 ? lowerText[index - 1] : ' ';
           const afterChar = index + lowerVariation.length < lowerText.length ? 
             lowerText[index + lowerVariation.length] : ' ';
@@ -343,8 +223,8 @@ const filterTextWithVariations = (text: string, badWordsList: string[]): string 
           }
         }
       }
-    });
-  });
+    }
+  }
   
   return filteredText;
 };
@@ -398,22 +278,24 @@ export default function BadWordFilter() {
   } | null>(null);
   const [isClient, setIsClient] = useState(false);
 
-  // Initialize filters
-  const [badWordsFilter] = useState(() => new Filter());
-  const [obscenityMatcher] = useState(
+  // Initialize filters with useMemo for better performance
+  const badWordsFilter = useMemo(() => new Filter(), []);
+  const obscenityMatcher = useMemo(
     () =>
       new RegExpMatcher({
         ...englishDataset.build(),
         ...englishRecommendedTransformers,
-      })
+      }),
+    []
   );
-  const [obscenityCensor] = useState(() => new TextCensor());
+  const obscenityCensor = useMemo(() => new TextCensor(), []);
 
   // Handle client-side initialization
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  // Memoized processText function
   const processText = async () => {
     if (!inputText.trim()) return;
 
@@ -460,38 +342,9 @@ export default function BadWordFilter() {
       const badWordsFiltered = badWordsFilter.clean(textToProcess);
       const badWordsWords = badWordsFilter.list;
       
-      // Debug: Check what bad-words library detects
-      console.log('=== DEBUG: Bad-words library analysis ===');
-      console.log('Text processed:', textToProcess);
-      console.log('Bad words detected:', badWordsDetected);
-      console.log('Bad words filtered:', badWordsFiltered);
-      console.log('Bad words list length:', badWordsWords.length);
-      console.log('Bad words list sample:', badWordsWords.slice(0, 10));
-      
       // Use enhanced detection for variations
-      console.log('=== DEBUG: About to call detectBadWordVariations ===');
       const badWordsWordsFiltered = detectBadWordVariations(textToProcess, badWordsWords);
       const badWordsWordsFilteredSet = [...new Set(badWordsWordsFiltered)];
-      console.log('=== DEBUG: detectBadWordVariations returned ===');
-      console.log('Raw result:', badWordsWordsFiltered);
-      console.log('Deduplicated result:', badWordsWordsFilteredSet);
-      
-      // Debug: Test simple detection
-      console.log('=== DEBUG: Simple detection test ===');
-      const testText = 'f-4-c-k';
-      console.log('Testing text:', testText);
-      console.log('Contains "f-4-c-k":', testText.toLowerCase().includes('f-4-c-k'));
-      console.log('Contains "fuck":', testText.toLowerCase().includes('fuck'));
-      console.log('Bad words detected by enhanced detection:', badWordsWordsFilteredSet);
-      
-      // Test word boundary detection directly
-      console.log('=== DEBUG: Word boundary test ===');
-      const testVariations = ['f-4-c-k', 'f-u-c-k', 'fuck'];
-      testVariations.forEach(variation => {
-        // Simple substring test
-        const directMatch = 'testing leetspeak: f-4-c-k'.toLowerCase().includes(variation.toLowerCase());
-        console.log(`"${variation}" in "testing leetspeak: f-4-c-k": ${directMatch}`);
-      });
       
       // Use enhanced filtering for variations
       const enhancedBadWordsFiltered = filterTextWithVariations(textToProcess, badWordsWords);
@@ -582,7 +435,7 @@ export default function BadWordFilter() {
     if (!isClient) return; // Don't process on server-side
     
     if (inputText.trim()) {
-      const timeoutId = setTimeout(processText, 500);
+      const timeoutId = setTimeout(processText, 300); // Reduced from 500ms to 300ms
       return () => clearTimeout(timeoutId);
     } else {
       setObscenityResult(null);
