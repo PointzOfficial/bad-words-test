@@ -1,36 +1,195 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bad Words Test
+
+A Next.js application that demonstrates and compares bad word filtering using two popular libraries: `bad-words` and `obscenity`. This project provides a real-time interface to test how different filtering approaches handle various types of content.
+
+## Features
+
+### 🛡️ **Dual Library Filtering**
+- **bad-words library**: Fast, comprehensive English profanity filter
+- **obscenity library**: Advanced pattern matching with configurable strategies
+- **Combined filtering**: Sequential application of both libraries for maximum coverage
+
+### 📊 **Real-time Comparison**
+- Side-by-side results from both libraries
+- Detected words highlighting
+- Clean vs. filtered text display
+- Combined filtering results
+
+### 🎯 **User-friendly Interface**
+- Real-time text processing with debouncing
+- Sample texts for quick testing
+- Clean, modern UI with Tailwind CSS
+- Responsive design for all devices
+
+## Libraries Used
+
+### 1. **bad-words**
+- Comprehensive English profanity filter
+- Fast detection and cleaning
+- Extensive built-in word list
+- Simple API: `isProfane()` and `clean()`
+
+### 2. **obscenity**
+- Advanced pattern matching with regex
+- Configurable filtering strategies
+- Support for multiple languages
+- Custom word lists and transformers
+- More sophisticated detection algorithms
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
 
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd bad-words-test
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
+### Text Input
+- Enter any text in the textarea to see real-time filtering
+- Use the sample text buttons for quick testing
+- Processing happens automatically with a 500ms debounce
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Results Display
+The application shows three panels:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Obscenity Library Results**
+   - Original and filtered text
+   - Detected inappropriate words
+   - Clean/dirty status indicator
 
-## Deploy on Vercel
+2. **Bad-Words Library Results**
+   - Original and filtered text
+   - Detected profane words
+   - Clean/dirty status indicator
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. **Combined Results**
+   - Results from applying both libraries sequentially
+   - Comprehensive word detection
+   - Final filtered output
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Sample Texts
+The application includes several sample texts to test different scenarios:
+- Clean, appropriate content
+- Mild profanity
+- Various expressions and edge cases
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── layout.tsx          # Root layout with metadata
+│   ├── page.tsx            # Main page component
+│   └── globals.css         # Global styles
+└── components/
+    └── BadWordFilter.tsx   # Main filtering component with dual library support
+```
+
+## How It Works
+
+### Filtering Process
+1. **Text Input**: User enters text in the textarea
+2. **Debounced Processing**: Text is processed after 500ms of inactivity
+3. **Parallel Processing**: Both libraries process the text simultaneously
+4. **Combined Filtering**: Results are combined for maximum coverage
+5. **Display Results**: All results are displayed in real-time
+
+### Library Comparison
+- **bad-words**: Uses a predefined list of profane words
+- **obscenity**: Uses advanced pattern matching and transformers
+- **Combined**: Applies bad-words first, then obscenity to catch any remaining issues
+
+## Customization
+
+### Adding Custom Words
+To add custom words to the bad-words filter:
+
+```typescript
+const filter = new Filter();
+filter.addWords('custom', 'words', 'here');
+```
+
+### Modifying Obscenity Configuration
+You can customize the obscenity matcher:
+
+```typescript
+const matcher = new RegExpMatcher({
+  ...englishDataset.build(),
+  ...englishRecommendedTransformers,
+  // Add custom configuration here
+});
+```
+
+### Styling
+The application uses Tailwind CSS. Customize the appearance by modifying CSS classes in the components.
+
+## Performance Features
+
+- **Debounced Input**: 500ms delay prevents excessive processing
+- **Efficient State Management**: React hooks for optimal performance
+- **Memory Management**: Proper cleanup of timeouts and state
+- **Real-time Updates**: Immediate feedback without blocking the UI
+
+## Browser Support
+
+- Modern browsers with ES6+ support
+- Chrome, Firefox, Safari, Edge
+- Mobile responsive design
+- Progressive Web App ready
+
+## Development
+
+### Available Scripts
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+```
+
+### Adding New Libraries
+To add another filtering library:
+
+1. Install the library: `npm install new-filter-library`
+2. Import and initialize in `BadWordFilter.tsx`
+3. Add processing logic in the `processText` function
+4. Create a new result panel in the UI
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes
+4. Test thoroughly with various text inputs
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Acknowledgments
+
+- [bad-words](https://github.com/MauriceButler/badwords) - Profanity filter library
+- [obscenity](https://github.com/obscenity/obscenity) - Advanced content filtering
+- [Next.js](https://nextjs.org/) - React framework
+- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
