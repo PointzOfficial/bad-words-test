@@ -5,7 +5,9 @@ import { detectBadWordsCombined, FilterResult } from "../utils/badWordDetector";
 
 export default function BadWordFilter() {
   const [inputText, setInputText] = useState("");
-  const [combinedResult, setCombinedResult] = useState<FilterResult | null>(null);
+  const [combinedResult, setCombinedResult] = useState<FilterResult | null>(
+    null
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStats, setProcessingStats] = useState<{
     processingTime: number;
@@ -28,26 +30,27 @@ export default function BadWordFilter() {
     try {
       // Performance optimization: limit text length for processing
       const maxTextLength = 5000;
-      const textToProcess = inputText.length > maxTextLength 
-        ? inputText.substring(0, maxTextLength) + "..."
-        : inputText;
+      const textToProcess =
+        inputText.length > maxTextLength
+          ? inputText.substring(0, maxTextLength) + "..."
+          : inputText;
 
       // Process with combined function only
       const combinedResult = detectBadWordsCombined(textToProcess);
-      
+
       setCombinedResult(combinedResult);
-      
+
       // Calculate processing statistics
       const endTime = isClient ? performance.now() : 0;
       const processingTime = endTime - startTime;
-      
+
       setProcessingStats({
         processingTime,
         textLength: inputText.length,
       });
     } catch (error) {
       console.error("Error processing text:", error);
-      
+
       // Set error states
       const errorResult: FilterResult = {
         original: inputText,
@@ -55,7 +58,7 @@ export default function BadWordFilter() {
         detectedWords: [],
         isClean: true,
       };
-      
+
       setCombinedResult(errorResult);
       setProcessingStats(null);
     } finally {
@@ -65,7 +68,7 @@ export default function BadWordFilter() {
 
   useEffect(() => {
     if (!isClient) return;
-    
+
     if (inputText.trim()) {
       const timeoutId = setTimeout(processText, 300);
       return () => clearTimeout(timeoutId);
@@ -86,7 +89,7 @@ export default function BadWordFilter() {
     "fantastic",
     "amazing",
     "wonderful",
-    
+
     // Basic bad words
     "fuck",
     "shit",
@@ -98,7 +101,7 @@ export default function BadWordFilter() {
     "pussy",
     "whore",
     "slut",
-    
+
     // Case variations
     "FUCK",
     "Shit",
@@ -110,7 +113,7 @@ export default function BadWordFilter() {
     "Pussy",
     "WHORE",
     "Slut",
-    
+
     // Mixed case
     "FuCk",
     "ShIt",
@@ -122,7 +125,7 @@ export default function BadWordFilter() {
     "PuSsY",
     "WhOrE",
     "SlUt",
-    
+
     // Underscore variations
     "f_u_c_k",
     "s_h_i_t",
@@ -134,7 +137,7 @@ export default function BadWordFilter() {
     "p_u_s_s_y",
     "w_h_o_r_e",
     "s_l_u_t",
-    
+
     // Number substitutions
     "f4ck",
     "sh1t",
@@ -146,7 +149,7 @@ export default function BadWordFilter() {
     "pussy",
     "wh0re",
     "slut",
-    
+
     // Underscore + numbers
     "f_4_c_k",
     "sh_1_t",
@@ -158,7 +161,7 @@ export default function BadWordFilter() {
     "p_u_s_s_y",
     "wh_0_r_e",
     "s_l_u_t",
-    
+
     // Mixed case with numbers
     "F_4_C_K",
     "Sh_1_T",
@@ -170,79 +173,7 @@ export default function BadWordFilter() {
     "P_U_S_S_Y",
     "Wh_0_R_E",
     "S_L_U_T",
-    
-    // Character omissions
-    "fck",
-    "sht",
-    "ass",
-    "btch",
-    "ck",
-    "cnt",
-    "dck",
-    "pssy",
-    "whre",
-    "slt",
-    
-    // Character repetitions
-    "fuuck",
-    "shhit",
-    "aass",
-    "biitch",
-    "coock",
-    "cuunt",
-    "diick",
-    "puussy",
-    "whhore",
-    "sluut",
-    
-    // Character additions
-    "fucck",
-    "shitt",
-    "aasss",
-    "bittch",
-    "coockk",
-    "cuuntt",
-    "diickk",
-    "puussyy",
-    "whhorre",
-    "sluutt",
-    
-    // Leetspeak variations
-    "f@ck",
-    "sh!t",
-    "@ss",
-    "b!tch",
-    "c0ck",
-    "cunt",
-    "d!ck",
-    "pussy",
-    "wh0re",
-    "slut",
-    
-    // Symbol variations
-    "f$ck",
-    "sh!t",
-    "$ss",
-    "b!tch",
-    "c0ck",
-    "cunt",
-    "d!ck",
-    "pussy",
-    "wh0re",
-    "slut",
-    
-    // Complex combinations
-    "f_@_c_k",
-    "sh_!_t",
-    "@_s_s",
-    "b_!_t_c_h",
-    "c_0_c_k",
-    "c_u_n_t",
-    "d_!_c_k",
-    "p_u_s_s_y",
-    "wh_0_r_e",
-    "s_l_u_t",
-    
+
     // Full width characters
     "ｆｕｃｋ",
     "ｓｈｉｔ",
@@ -254,7 +185,7 @@ export default function BadWordFilter() {
     "ｐｕｓｓｙ",
     "ｗｈｏｒｅ",
     "ｓｌｕｔ",
-    
+
     // Cyrillic lookalikes
     "fаck",
     "shіt",
@@ -266,30 +197,6 @@ export default function BadWordFilter() {
     "pussy",
     "whоre",
     "slut",
-    
-    // Mixed separators
-    "f_u.c_k",
-    "sh_i.t",
-    "a_s.s",
-    "b_i.t_c_h",
-    "c_o.c_k",
-    "c_u.n_t",
-    "d_i.c_k",
-    "p_u.s_s_y",
-    "wh_o.r_e",
-    "s_l.u_t",
-    
-    // Extreme variations
-    "f_@_c_k",
-    "sh_!_t",
-    "@_s_s",
-    "b_!_t_c_h",
-    "c_0_c_k",
-    "c_u_n_t",
-    "d_!_c_k",
-    "p_u_s_s_y",
-    "wh_0_r_e",
-    "s_l_u_t",
   ];
 
   // Show loading state during SSR
@@ -311,8 +218,13 @@ export default function BadWordFilter() {
     <div className="space-y-6">
       {/* Input Section */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Ultimate Bad Words Filter</h2>
-        <p className="text-gray-600 mb-4">Comprehensive detection using bad-words library with enhanced variation detection + obscenity library as extra layer</p>
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          Ultimate Bad Words Filter
+        </h2>
+        <p className="text-gray-600 mb-4">
+          Comprehensive detection using bad-words library with enhanced
+          variation detection + obscenity library as extra layer
+        </p>
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -326,6 +238,98 @@ export default function BadWordFilter() {
           />
         </div>
 
+        {/* Results Section */}
+        <div className="grid md:grid-cols-1 gap-6">
+          {/* Combined Results */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">
+                Combined (Both Libraries)
+              </h3>
+              {combinedResult && (
+                <span
+                  className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
+                    combinedResult.isClean
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {combinedResult.isClean ? "Clean" : "Contains Bad Words"}
+                </span>
+              )}
+            </div>
+
+            {combinedResult ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Original Text:
+                  </label>
+                  <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-900">
+                    {combinedResult.original}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Filtered Text:
+                  </label>
+                  <div className="p-3 bg-green-50 rounded-lg text-sm text-gray-900">
+                    {combinedResult.filtered}
+                  </div>
+                </div>
+
+                {combinedResult.detectedWords.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Detected Words:
+                    </label>
+                    <div className="flex flex-wrap gap-1">
+                      {combinedResult.detectedWords.map((word, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-md"
+                        >
+                          {word}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-gray-500 text-center py-8">
+                Enter text above to see results
+              </div>
+            )}
+          </div>
+        </div>
+
+        {isProcessing && (
+          <div className="flex items-center text-blue-600">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+            Processing...
+          </div>
+        )}
+
+        {processingStats && isClient && (
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              Processing Statistics
+            </h4>
+            <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
+              <div>
+                <span className="font-medium">Text Length:</span>{" "}
+                {processingStats.textLength} chars
+              </div>
+              <div>
+                <span className="font-medium">Processing Time:</span>{" "}
+                {processingStats.processingTime.toFixed(2)}ms
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Sample Texts */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -338,98 +342,10 @@ export default function BadWordFilter() {
                 onClick={() => setInputText(text)}
                 className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors border border-gray-300"
               >
-                {text.length > 15 ? text.substring(0, 12) + '...' : text}
+                {text.length > 15 ? text.substring(0, 12) + "..." : text}
               </button>
             ))}
           </div>
-        </div>
-
-        {isProcessing && (
-          <div className="flex items-center text-blue-600">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-            Processing...
-          </div>
-        )}
-        
-        {processingStats && isClient && (
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Processing Statistics</h4>
-            <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
-              <div>
-                <span className="font-medium">Text Length:</span> {processingStats.textLength} chars
-              </div>
-              <div>
-                <span className="font-medium">Processing Time:</span> {processingStats.processingTime.toFixed(2)}ms
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Results Section */}
-      <div className="grid md:grid-cols-1 gap-6">
-        {/* Combined Results */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">
-              Combined (Both Libraries)
-            </h3>
-            {combinedResult && (
-              <span
-                className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
-                  combinedResult.isClean
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {combinedResult.isClean ? "Clean" : "Contains Bad Words"}
-              </span>
-            )}
-          </div>
-
-          {combinedResult ? (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Original Text:
-                </label>
-                <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-900">
-                  {combinedResult.original}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Filtered Text:
-                </label>
-                <div className="p-3 bg-green-50 rounded-lg text-sm text-gray-900">
-                  {combinedResult.filtered}
-                </div>
-              </div>
-
-              {combinedResult.detectedWords.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Detected Words:
-                  </label>
-                  <div className="flex flex-wrap gap-1">
-                    {combinedResult.detectedWords.map((word, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-md"
-                      >
-                        {word}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-gray-500 text-center py-8">
-              Enter text above to see results
-            </div>
-          )}
         </div>
       </div>
     </div>

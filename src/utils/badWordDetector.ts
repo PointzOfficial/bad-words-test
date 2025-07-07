@@ -13,177 +13,152 @@ export interface FilterResult {
   isClean: boolean;
 }
 
-// Comprehensive leetspeak mapping based on obscenity library
+// Optimized leetspeak mapping with only most common substitutions
 const leetspeakMap: { [key: string]: string[] } = {
-  'a': ['@', '4', 'а', 'Α', 'Ａ'],
-  'b': ['8', '6', 'в', 'Β', 'Ｂ'],
-  'c': ['(', 'с', 'С', 'Ｃ'],
-  'd': ['d', 'D', 'Ｄ'],
-  'e': ['3', 'е', 'Ε', 'Ｅ'],
-  'f': ['f', 'F', 'Ｆ'],
-  'g': ['6', '9', 'g', 'G', 'Ｇ'],
-  'h': ['h', 'H', 'Ｈ'],
-  'i': ['1', '!', '|', 'l', 'L', 'ｉ', 'Ｉ'],
-  'j': ['j', 'J', 'Ｊ'],
-  'k': ['k', 'K', 'Ｋ'],
-  'l': ['1', '|', 'l', 'L', 'Ｌ'],
-  'm': ['m', 'M', 'Ｍ'],
-  'n': ['n', 'N', 'Ｎ'],
-  'o': ['0', 'о', 'Ο', 'Ｏ'],
-  'p': ['p', 'P', 'Ｐ'],
-  'q': ['q', 'Q', 'Ｑ'],
-  'r': ['r', 'R', 'Ｒ'],
-  's': ['$', '5', 's', 'S', 'Ｓ'],
-  't': ['7', 't', 'T', 'Ｔ'],
-  'u': ['u', 'U', 'Ｕ'],
-  'v': ['v', 'V', 'Ｖ'],
-  'w': ['w', 'W', 'Ｗ'],
-  'x': ['x', 'X', 'Ｘ'],
-  'y': ['y', 'Y', 'Ｙ'],
-  'z': ['2', 'z', 'Z', 'Ｚ']
+  'a': ['@', '4'],
+  'e': ['3'],
+  'i': ['1', '!'],
+  'o': ['0'],
+  's': ['$', '5'],
+  't': ['7'],
 };
 
-// Enhanced function to generate comprehensive word variations
+// Cache for generated variations to avoid recomputation
+const variationCache = new Map<string, string[]>();
+
+// Optimized function to generate word variations with caching
 const generateWordVariations = (word: string): string[] => {
-  if (!word || word.length === 0) return [];
+  if (!word || word.length < 3) return [];
+  
+  // Check cache first
+  const cacheKey = word.toLowerCase();
+  if (variationCache.has(cacheKey)) {
+    return variationCache.get(cacheKey)!;
+  }
   
   const variations: Set<string> = new Set();
+  const lowerWord = word.toLowerCase();
   
-  // Add original word and case variations
+  // Add basic variations
   variations.add(word);
-  variations.add(word.toLowerCase());
+  variations.add(lowerWord);
   variations.add(word.toUpperCase());
   
-  // Generate mixed case variations
+  // Generate mixed case variation
   const mixedCase = word.split('').map((char, index) => 
     index % 2 === 0 ? char.toUpperCase() : char.toLowerCase()
   ).join('');
   variations.add(mixedCase);
   
-  // Generate underscore variations
-  const underscoreVariations = word.split('').join('_');
-  variations.add(underscoreVariations);
-  variations.add(underscoreVariations.toLowerCase());
-  variations.add(underscoreVariations.toUpperCase());
+  // Generate underscore variation
+  const underscoreVariation = word.split('').join('_');
+  variations.add(underscoreVariation);
+  variations.add(underscoreVariation.toLowerCase());
+  variations.add(underscoreVariation.toUpperCase());
   
-  // Generate leetspeak variations
-  let leetspeakWord = word;
+  // Generate leetspeak variations (only for common letters)
+  let leetspeakWord = lowerWord;
   Object.entries(leetspeakMap).forEach(([letter, substitutes]) => {
-    if (leetspeakWord.toLowerCase().includes(letter)) {
+    if (leetspeakWord.includes(letter)) {
       substitutes.forEach(substitute => {
-        const newWord = leetspeakWord.replace(new RegExp(letter, 'gi'), substitute);
+        const newWord = leetspeakWord.replace(new RegExp(letter, 'g'), substitute);
         variations.add(newWord);
-        variations.add(newWord.toLowerCase());
         variations.add(newWord.toUpperCase());
         
         // Underscore version of leetspeak
         const leetspeakUnderscore = newWord.split('').join('_');
         variations.add(leetspeakUnderscore);
-        variations.add(leetspeakUnderscore.toLowerCase());
         variations.add(leetspeakUnderscore.toUpperCase());
       });
     }
   });
   
-  // Generate number substitutions (common ones)
-  const numberMap: { [key: string]: string } = {
-    'a': '4',
-    'e': '3',
-    'i': '1',
-    'o': '0',
-    's': '5',
-    't': '7'
-  };
-  
-  let numberWord = word;
-  Object.entries(numberMap).forEach(([letter, number]) => {
-    numberWord = numberWord.replace(new RegExp(letter, 'gi'), number);
-  });
+  // Generate number substitution variation
+  const numberWord = lowerWord
+    .replace(/a/g, '4')
+    .replace(/e/g, '3')
+    .replace(/i/g, '1')
+    .replace(/o/g, '0')
+    .replace(/s/g, '5')
+    .replace(/t/g, '7');
   variations.add(numberWord);
-  variations.add(numberWord.toLowerCase());
   variations.add(numberWord.toUpperCase());
   
   // Underscore version of number word
   const numberUnderscoreWord = numberWord.split('').join('_');
   variations.add(numberUnderscoreWord);
-  variations.add(numberUnderscoreWord.toLowerCase());
   variations.add(numberUnderscoreWord.toUpperCase());
   
-  // Generate character repetition variations
-  const chars = word.split('');
-  for (let i = 0; i < chars.length; i++) {
-    const repeated = [...chars.slice(0, i), chars[i], chars[i], ...chars.slice(i + 1)].join('');
-    variations.add(repeated);
-    variations.add(repeated.toLowerCase());
-    variations.add(repeated.toUpperCase());
+  // Generate character repetition variations (only for first and last characters)
+  const chars = lowerWord.split('');
+  if (chars.length > 0) {
+    // Repeat first character
+    const firstRepeated = chars[0] + chars[0] + chars.slice(1).join('');
+    variations.add(firstRepeated);
+    variations.add(firstRepeated.toUpperCase());
+    
+    // Repeat last character
+    if (chars.length > 1) {
+      const lastRepeated = chars.slice(0, -1).join('') + chars[chars.length - 1] + chars[chars.length - 1];
+      variations.add(lastRepeated);
+      variations.add(lastRepeated.toUpperCase());
+    }
   }
   
-  // Generate character omission variations
-  for (let i = 0; i < chars.length; i++) {
-    const omitted = [...chars.slice(0, i), ...chars.slice(i + 1)].join('');
-    if (omitted.length >= 3) {
+  // Generate character omission variations (only for middle characters)
+  if (chars.length > 3) {
+    for (let i = 1; i < chars.length - 1; i++) {
+      const omitted = chars.slice(0, i).join('') + chars.slice(i + 1).join('');
       variations.add(omitted);
-      variations.add(omitted.toLowerCase());
       variations.add(omitted.toUpperCase());
     }
   }
   
-  // Generate character addition variations
-  for (let i = 0; i < chars.length; i++) {
-    const added = [...chars.slice(0, i), chars[i], chars[i], ...chars.slice(i)].join('');
-    variations.add(added);
-    variations.add(added.toLowerCase());
-    variations.add(added.toUpperCase());
-  }
+  const result = Array.from(variations);
   
-  return Array.from(variations);
+  // Cache the result
+  variationCache.set(cacheKey, result);
+  
+  return result;
 };
 
-// Enhanced function to detect bad word variations with comprehensive checking
+// Optimized function to detect bad word variations
 const detectBadWordVariations = (text: string, badWordsList: string[]): string[] => {
   if (!text || !badWordsList || badWordsList.length === 0) return [];
   
   const detectedWords: string[] = [];
   const lowerText = text.toLowerCase();
   
-  // Helper function to check if a word exists in text with multiple strategies
-  const checkWordExists = (word: string, text: string): boolean => {
+  // Pre-compile regex patterns for better performance
+  const wordBoundaryPattern = /(\b|\W)/g;
+  
+  // Helper function to check if a word exists in text
+  const checkWordExists = (word: string): boolean => {
     const lowerWord = word.toLowerCase();
-    const lowerText = text.toLowerCase();
     
-    // Strategy 1: Exact match (case insensitive)
+    // Exact match check
     if (lowerText === lowerWord) return true;
     
-    // Strategy 2: Word boundary check
+    // Word boundary check with pre-compiled pattern
     const escapedWord = lowerWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const boundaryPattern = new RegExp(`(^|[\\s\\W])${escapedWord}([\\s\\W]|$)`, 'gi');
+    const boundaryPattern = new RegExp(`(^|\\b|\\W)${escapedWord}(\\b|\\W|$)`, 'i');
     if (boundaryPattern.test(text)) return true;
     
-    // Strategy 3: Simple inclusion check (for underscore patterns)
-    if (lowerWord.includes('_')) {
-      if (lowerText.includes(lowerWord)) return true;
-    }
+    // Underscore pattern check
+    if (lowerWord.includes('_') && lowerText.includes(lowerWord)) return true;
     
-    // Strategy 4: Check without underscores
+    // Check without underscores
     const withoutUnderscores = lowerWord.replace(/_/g, '');
     if (withoutUnderscores.length >= 3) {
       const escapedWithoutUnderscores = withoutUnderscores.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(`(^|[\\s\\W])${escapedWithoutUnderscores}([\\s\\W]|$)`, 'gi');
-      if (pattern.test(text)) return true;
-    }
-    
-    // Strategy 5: Check with spaces instead of underscores
-    const withSpaces = lowerWord.replace(/_/g, ' ');
-    if (withSpaces !== lowerWord) {
-      const escapedWithSpaces = withSpaces.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(`(^|[\\s\\W])${escapedWithSpaces}([\\s\\W]|$)`, 'gi');
+      const pattern = new RegExp(`(^|\\b|\\W)${escapedWithoutUnderscores}(\\b|\\W|$)`, 'i');
       if (pattern.test(text)) return true;
     }
     
     return false;
   };
   
-  // Process bad words from bad-words library
+  // Process bad words with early exit
   for (const badWord of badWordsList) {
     const lowerBadWord = badWord.toLowerCase();
     
@@ -191,21 +166,21 @@ const detectBadWordVariations = (text: string, badWordsList: string[]): string[]
     if (lowerBadWord.length < 3) continue;
     
     // Check for exact word boundary match first
-    if (checkWordExists(lowerBadWord, text)) {
+    if (checkWordExists(lowerBadWord)) {
       detectedWords.push(badWord);
       continue;
     }
     
-    // Generate variations
+    // Generate variations only if needed
     const variations = generateWordVariations(lowerBadWord);
     
-    // Check variations
+    // Check variations with early exit
     for (const variation of variations) {
       if (variation.length < 2) continue;
       
-      if (checkWordExists(variation, text)) {
+      if (checkWordExists(variation)) {
         detectedWords.push(badWord);
-        break;
+        break; // Found a match, no need to check more variations
       }
     }
   }
@@ -213,7 +188,7 @@ const detectBadWordVariations = (text: string, badWordsList: string[]): string[]
   return [...new Set(detectedWords)];
 };
 
-// Enhanced filtering function with comprehensive replacement
+// Optimized filtering function
 const filterTextWithVariations = (text: string, badWordsList: string[]): string => {
   if (!text || !badWordsList || badWordsList.length === 0) {
     return text;
@@ -221,9 +196,9 @@ const filterTextWithVariations = (text: string, badWordsList: string[]): string 
   
   let filteredText = text;
   
-  // Process each bad word from bad-words library
+  // Process each bad word
   for (const badWord of badWordsList) {
-    if (!badWord || typeof badWord !== 'string') continue;
+    if (!badWord || typeof badWord !== 'string' || badWord.length < 3) continue;
     
     const lowerBadWord = badWord.toLowerCase();
     const replacement = '*'.repeat(badWord.length);
@@ -231,30 +206,30 @@ const filterTextWithVariations = (text: string, badWordsList: string[]): string 
     // Generate variations for this word
     const variations = generateWordVariations(lowerBadWord);
     
-    // Replace each variation with multiple strategies
+    // Replace each variation
     for (const variation of variations) {
       if (!variation || variation.length < 2) continue;
       
       try {
         const escapedVariation = variation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         
-        // Strategy 1: Word boundary replacement
-        const boundaryPattern = new RegExp(`(^|[\\s\\W])${escapedVariation}([\\s\\W]|$)`, 'gi');
+        // Word boundary replacement
+        const boundaryPattern = new RegExp(`(^|\\b|\\W)${escapedVariation}(\\b|\\W|$)`, 'gi');
         filteredText = filteredText.replace(boundaryPattern, (match, before, after) => {
           return before + replacement + after;
         });
         
-        // Strategy 2: Simple pattern replacement for underscore variations
+        // Simple pattern replacement for underscore variations
         if (variation.includes('_')) {
           const simplePattern = new RegExp(escapedVariation, 'gi');
           filteredText = filteredText.replace(simplePattern, replacement);
         }
         
-        // Strategy 3: Replace without underscores
+        // Replace without underscores
         const withoutUnderscores = variation.replace(/_/g, '');
         if (withoutUnderscores.length >= 3) {
           const escapedWithoutUnderscores = withoutUnderscores.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const pattern = new RegExp(`(^|[\\s\\W])${escapedWithoutUnderscores}([\\s\\W]|$)`, 'gi');
+          const pattern = new RegExp(`(^|\\b|\\W)${escapedWithoutUnderscores}(\\b|\\W|$)`, 'gi');
           filteredText = filteredText.replace(pattern, (match, before, after) => {
             return before + replacement + after;
           });
@@ -285,7 +260,7 @@ const filterTextWithVariations = (text: string, badWordsList: string[]): string 
   return filteredText;
 };
 
-// Initialize filters (singleton pattern)
+// Singleton pattern for filter initialization
 let badWordsFilter: Filter | null = null;
 let obscenityMatcher: RegExpMatcher | null = null;
 let obscenityCensor: TextCensor | null = null;
@@ -319,7 +294,7 @@ export const detectBadWordsCombined = (text: string): FilterResult => {
   // Initialize filters
   initializeFilters();
 
-  // Process with bad-words library (enhanced with variations detection)
+  // Process with bad-words library
   const badWordsList = badWordsFilter!.list;
   const detectedWords = detectBadWordVariations(text, badWordsList);
   const detectedWordsSet = [...new Set(detectedWords)];
@@ -337,7 +312,7 @@ export const detectBadWordsCombined = (text: string): FilterResult => {
     return payload.phraseMetadata?.originalWord || "unknown";
   });
 
-  // Process with combined approach
+  // Combine results
   let combinedFiltered = text;
   const combinedDetectedWords: string[] = [];
 
@@ -347,7 +322,7 @@ export const detectBadWordsCombined = (text: string): FilterResult => {
   }
 
   if (obscenityDetected) {
-    // Apply obscenity filtering to the already filtered text
+    // Apply obscenity filtering
     const obscenityMatchesCombined = obscenityMatcher!.getAllMatches(
       combinedFiltered,
       true
